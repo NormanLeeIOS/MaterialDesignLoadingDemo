@@ -8,6 +8,223 @@
 
 #import "MaterialDesignLoadingView.h"
 
+#define ROUND_COLOR [[UIColor grayColor] colorWithAlphaComponent:0.2]
+
+static NSString *loadingAnimationRotationKey = @"loading.rotation";
+static NSString *loadingAnimationStrokeKey = @"loading.stroke";
+
+@interface MaterialDesignLoadingView ()
+
+@property (nonatomic, assign, readwrite) BOOL isAnimating;
+
+@property (nonatomic, strong) CAShapeLayer *progressLayer;
+
+@property (nonatomic, strong) UIImageView *bgArcImageView;
+
+@end
+
 @implementation MaterialDesignLoadingView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self initialize];
+    }
+    return self;
+}
+
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        [self initialize];
+    }
+    return self;
+}
+
+- (void)initialize
+{
+    _duration = 1.0f;
+    _timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    
+    [self.layer addSublayer:self.progressLayer];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resetAnimations) name:UIApplicationDidBecomeActiveNotification object:nil];
+}
+
+- (void)addArcBackground
+{
+    // ArcBackground
+    UIGraphicsBeginImageContextWithOptions(self.bounds.size, NO, [UIScreen mainScreen].scale);
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+    CGContextSetStrokeColorWithColor(ctx, ROUND_COLOR.CGColor);
+    CGContextSetLineWidth(ctx, self.lineWidth);
+    CGContextAddArc(ctx, self.bounds.size.width/2, self.bounds.size.height/2, MIN(self.bounds.size.width/2, self.bounds.size.height/2) - self.lineWidth/2, 0, 2*M_PI, 1); // r = 50
+    CGContextDrawPath(ctx, kCGPathStroke);
+    UIImage *curve = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    _bgArcImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height)];
+    _bgArcImageView.image = curve;
+    _bgArcImageView.backgroundColor = [UIColor clearColor];
+    
+    [self addSubview:_bgArcImageView];
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    _progressLayer.frame = CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height);
+    
+    [self updataPath];
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidBecomeActiveNotification object:nil]; 
+}
+
+- (void)tintColorDidChange
+{
+    [super tintColorDidChange];
+    _progressLayer.strokeColor = self.tintColor.CGColor;
+}
+
+#pragma mark - Animation Method
+
+- (void)startLoadingAnimation
+{
+    if (_isAnimating) {
+        return;
+    }
+    
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform.rotation"];
+    animation.duration = _duration / 0.375f;    // 2 + 2/3 round per duration
+    animation.fromValue = @(0.f);
+    animation.toValue = @(2 * M_PI);
+    animation.repeatCount = INFINITY;
+    animation.removedOnCompletion = NO;
+    [_progressLayer addAnimation:animation forKey:loadingAnimationRotationKey];
+    
+    CABasicAnimation *headAnimation = [CABasicAnimation animationWithKeyPath:@"strokeStart"];
+    headAnimation.duration = _duration / 1.5f;
+    headAnimation.fromValue = @(0.f);
+    headAnimation.toValue = @(0.25f);           // empty space to tail, 1/4 round
+    headAnimation.timingFunction = _timingFunction;
+    
+    CABasicAnimation *tailAnimation = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
+    tailAnimation.duration = _duration / 1.5f;
+    tailAnimation.fromValue = @(0.0f);
+    tailAnimation.toValue = @(1.f);              // 1 round
+    tailAnimation.timingFunction = _timingFunction;
+    
+    CABasicAnimation *endHeadAnimation = [CABasicAnimation animationWithKeyPath:@"strokeStart"];
+    endHeadAnimation.beginTime = _duration / 1.5f;  // start from last animation fade
+    endHeadAnimation.duration = _duration / 3.0f;
+    endHeadAnimation.fromValue = @(0.25f);
+    endHeadAnimation.toValue = @(1.f);
+    endHeadAnimation.timingFunction = _timingFunction;
+    
+    CABasicAnimation *endTailAnimation = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
+    endTailAnimation.beginTime = _duration / 1.5f;
+    endTailAnimation.duration = _duration / 3.0f;
+    endTailAnimation.fromValue = @(1.f);
+    endTailAnimation.toValue = @(1.f);
+    endTailAnimation.timingFunction = _timingFunction;
+    
+    CAAnimationGroup *animations = [CAAnimationGroup animation];
+    animations.duration = _duration;
+    animations.animations = @[headAnimation, tailAnimation, endHeadAnimation, endTailAnimation];
+    animations.repeatCount = INFINITY;
+    animations.removedOnCompletion = NO;
+    [_progressLayer addAnimation:animations forKey:loadingAnimationStrokeKey];
+    
+    _isAnimating = YES;
+    
+    if (_hidesWhenStopped) {
+        self.hidden = NO;
+    }
+    
+    if (!_bgArcImageView) {
+        [self addArcBackground];
+    }
+}
+
+- (void)stopLoadingAnimation
+{
+    if (!_isAnimating) {
+        return;
+    }
+    
+    [_progressLayer removeAllAnimations];
+    _isAnimating = NO;
+    
+    if (_hidesWhenStopped) {
+        self.hidden = YES;
+    }
+    
+    [_bgArcImageView removeFromSuperview];
+    _bgArcImageView = nil;
+}
+
+- (void)resetAnimations
+{
+    if (_isAnimating) {
+        [self stopLoadingAnimation];
+        [self startLoadingAnimation];
+    }
+}
+
+#pragma mark - private methods
+
+- (void)updataPath
+{
+    CGPoint center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
+    CGFloat radius = MIN(self.bounds.size.width / 2, self.bounds.size.height / 2) - _progressLayer.lineWidth / 2;
+    CGFloat startAngle = (CGFloat)(0);
+    CGFloat endAngle = (CGFloat)(2*M_PI);
+    UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:center
+                                                        radius:radius
+                                                    startAngle:startAngle
+                                                      endAngle:endAngle
+                                                     clockwise:YES];
+    _progressLayer.path = path.CGPath;
+    _progressLayer.strokeStart = 0.f;
+    _progressLayer.strokeEnd = 0.f;
+}
+
+#pragma mark - getters & setters
+
+- (CAShapeLayer *)progressLayer
+{
+    if (!_progressLayer) {
+        _progressLayer = [CAShapeLayer layer];
+        _progressLayer.strokeColor = self.tintColor.CGColor;
+        _progressLayer.fillColor = nil;
+        _progressLayer.lineWidth = 1.5f;
+        _progressLayer.lineJoin = kCALineJoinRound;
+        _progressLayer.lineCap = kCALineCapRound;
+    }
+    return _progressLayer;
+}
+
+- (CGFloat)lineWidth
+{
+    return _progressLayer.lineWidth;
+}
+
+- (void)setLineWidth:(CGFloat)lineWidth
+{
+    _progressLayer.lineWidth = lineWidth;
+    [self updataPath];
+}
+
+- (void)setHidesWhenStopped:(BOOL)hidesWhenStopped
+{
+    _hidesWhenStopped = hidesWhenStopped;
+    self.hidden = !self.isAnimating && hidesWhenStopped;
+}
 
 @end

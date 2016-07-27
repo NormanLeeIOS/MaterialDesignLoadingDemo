@@ -20,7 +20,7 @@
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     self.window.rootViewController = [[AnimationViewController alloc] init];
     [self.window makeKeyAndVisible];
-    self.window.backgroundColor = [UIColor yellowColor];
+    self.window.backgroundColor = [UIColor clearColor];
     return YES;
 }
 

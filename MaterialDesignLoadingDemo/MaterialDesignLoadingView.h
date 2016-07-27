@@ -6,8 +6,22 @@
 //  Copyright © 2016年 NormanLeeIOS. All rights reserved.
 //
 
-#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
-@interface MaterialDesignLoadingView : NSObject
+@interface MaterialDesignLoadingView : UIView
+
+@property (nonatomic, readonly) BOOL isAnimating;
+
+@property (nonatomic, readwrite) NSTimeInterval duration;
+
+@property (nonatomic, strong) CAMediaTimingFunction *timingFunction;
+
+@property (nonatomic, assign) CGFloat lineWidth;
+
+@property (nonatomic, assign) BOOL hidesWhenStopped;
+
+- (void)startLoadingAnimation;
+
+- (void)stopLoadingAnimation;
 
 @end
