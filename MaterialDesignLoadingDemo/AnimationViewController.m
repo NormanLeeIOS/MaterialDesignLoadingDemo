@@ -36,7 +36,7 @@
     _loadingAnimation = [[MaterialDesignLoadingView alloc] initWithFrame:CGRectMake(self.view.bounds.size.width/2 - 50.0f, 150, 100, 100)];
     _loadingAnimation.tintColor = [[UIColor grayColor] colorWithAlphaComponent:0.3];
     _loadingAnimation.lineWidth = 10.0f;
-    _loadingAnimation.duration = 1.0f;
+    _loadingAnimation.duration = 1.05f;
     
     [self.view addSubview:restartBtn];
     [self.view addSubview:stopBtn];

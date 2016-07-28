@@ -46,9 +46,8 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
 
 - (void)initialize
 {
-    self.duration = 1.0f;
-    self.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    
+    self.duration = 1.05f;
+    self.timingFunction = [[CAMediaTimingFunction alloc] initWithControlPoints:0.4f :0.0f :0.2f :1.0f];
     [self.layer addSublayer:self.progressLayer];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resetAnimations) name:UIApplicationDidBecomeActiveNotification object:nil];
@@ -100,43 +99,74 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
         return;
     }
     
+    /**
+     *  path rotation
+     *  radius = 2 * pi, 
+     *  duration = T/0.375,
+     */
     CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform.rotation"];
     animation.duration = self.duration / 0.375f;    // 2 + 2/3 round per duration
     animation.fromValue = @(0.f);
     animation.toValue = @(2 * M_PI);
     animation.repeatCount = INFINITY;
     animation.removedOnCompletion = NO;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
     [self.progressLayer addAnimation:animation forKey:loadingAnimationRotationKey];
     
-    CABasicAnimation *headAnimation = [CABasicAnimation animationWithKeyPath:@"strokeStart"];
-    headAnimation.duration = self.duration / 1.5f;
-    headAnimation.fromValue = @(0.f);
-    headAnimation.toValue = @(0.25f);           // empty space to tail, 1/4 round
-    headAnimation.timingFunction = self.timingFunction;
-    
+    /**
+     *  tail motivation 1
+     *  radius = 2 * PI,
+     *  duration = T
+     */
     CABasicAnimation *tailAnimation = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
-    tailAnimation.duration = self.duration / 1.5f;
+    tailAnimation.duration = self.duration;
     tailAnimation.fromValue = @(0.0f);
     tailAnimation.toValue = @(1.f);              // 1 round
+    tailAnimation.fillMode = kCAFillModeForwards;
     tailAnimation.timingFunction = self.timingFunction;
     
+    /**
+     *  head motivation 1
+     *  radius = 2 * pi, 
+     *  duration = T
+     */
+    CABasicAnimation *headAnimation = [CABasicAnimation animationWithKeyPath:@"strokeStart"];
+    headAnimation.beginTime = self.duration / 3.0f;
+    headAnimation.duration = self.duration;
+    headAnimation.fromValue = @(0.f);
+    headAnimation.toValue = @(1.0f);
+    headAnimation.fillMode = kCAFillModeRemoved;
+    headAnimation.timingFunction = self.timingFunction;
+    
+    /**
+     *  tail motivation 2
+     *  radius = 2 * PI
+     *  duration = T
+     */
+    CABasicAnimation *endTailAnimation = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
+    endTailAnimation.beginTime = self.duration + self.duration / 3.0f;
+    endTailAnimation.duration = self.duration;
+    endTailAnimation.fromValue = @(0.0f);
+    endTailAnimation.toValue = @(1.f);
+    endTailAnimation.fillMode = kCAFillModeForwards;
+    endTailAnimation.timingFunction = self.timingFunction;
+
+    /**
+     *  head motivation 2
+     *  radius = 2 * PI
+     *  duration = T
+     */
     CABasicAnimation *endHeadAnimation = [CABasicAnimation animationWithKeyPath:@"strokeStart"];
-    endHeadAnimation.beginTime = self.duration / 1.5f;  // start from last animation fade
-    endHeadAnimation.duration = self.duration / 3.0f;
-    endHeadAnimation.fromValue = @(0.25f);
+    endHeadAnimation.beginTime = self.duration + self.duration / 1.5f;  // start from last animation fade
+    endHeadAnimation.duration = self.duration;
+    endHeadAnimation.fromValue = @(0.0f);
     endHeadAnimation.toValue = @(1.f);
+    endHeadAnimation.fillMode = kCAFillModeRemoved;
     endHeadAnimation.timingFunction = self.timingFunction;
     
-    CABasicAnimation *endTailAnimation = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
-    endTailAnimation.beginTime = self.duration / 1.5f;
-    endTailAnimation.duration = self.duration / 3.0f;
-    endTailAnimation.fromValue = @(1.f);
-    endTailAnimation.toValue = @(1.f);
-    endTailAnimation.timingFunction = self.timingFunction;
-    
     CAAnimationGroup *animations = [CAAnimationGroup animation];
-    animations.duration = self.duration;
-    animations.animations = @[headAnimation, tailAnimation, endHeadAnimation, endTailAnimation];
+    animations.duration = self.duration / 0.375f;
+    animations.animations = @[tailAnimation, headAnimation, endTailAnimation, endHeadAnimation];
     animations.repeatCount = INFINITY;
     animations.removedOnCompletion = NO;
     [self.progressLayer addAnimation:animations forKey:loadingAnimationStrokeKey];
