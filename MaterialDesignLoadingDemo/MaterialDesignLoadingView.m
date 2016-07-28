@@ -46,8 +46,8 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
 
 - (void)initialize
 {
-    _duration = 1.0f;
-    _timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    self.duration = 1.0f;
+    self.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     
     [self.layer addSublayer:self.progressLayer];
     
@@ -66,17 +66,17 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
     UIImage *curve = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     
-    _bgArcImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height)];
-    _bgArcImageView.image = curve;
-    _bgArcImageView.backgroundColor = [UIColor clearColor];
+    self.bgArcImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height)];
+    self.bgArcImageView.image = curve;
+    self.bgArcImageView.backgroundColor = [UIColor clearColor];
     
-    [self addSubview:_bgArcImageView];
+    [self addSubview:self.bgArcImageView];
 }
 
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    _progressLayer.frame = CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height);
+    self.progressLayer.frame = CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height);
     
     [self updataPath];
 }
@@ -89,89 +89,89 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
 - (void)tintColorDidChange
 {
     [super tintColorDidChange];
-    _progressLayer.strokeColor = self.tintColor.CGColor;
+    self.progressLayer.strokeColor = self.tintColor.CGColor;
 }
 
 #pragma mark - Animation Method
 
 - (void)startLoadingAnimation
 {
-    if (_isAnimating) {
+    if (self.isAnimating) {
         return;
     }
     
     CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform.rotation"];
-    animation.duration = _duration / 0.375f;    // 2 + 2/3 round per duration
+    animation.duration = self.duration / 0.375f;    // 2 + 2/3 round per duration
     animation.fromValue = @(0.f);
     animation.toValue = @(2 * M_PI);
     animation.repeatCount = INFINITY;
     animation.removedOnCompletion = NO;
-    [_progressLayer addAnimation:animation forKey:loadingAnimationRotationKey];
+    [self.progressLayer addAnimation:animation forKey:loadingAnimationRotationKey];
     
     CABasicAnimation *headAnimation = [CABasicAnimation animationWithKeyPath:@"strokeStart"];
-    headAnimation.duration = _duration / 1.5f;
+    headAnimation.duration = self.duration / 1.5f;
     headAnimation.fromValue = @(0.f);
     headAnimation.toValue = @(0.25f);           // empty space to tail, 1/4 round
-    headAnimation.timingFunction = _timingFunction;
+    headAnimation.timingFunction = self.timingFunction;
     
     CABasicAnimation *tailAnimation = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
-    tailAnimation.duration = _duration / 1.5f;
+    tailAnimation.duration = self.duration / 1.5f;
     tailAnimation.fromValue = @(0.0f);
     tailAnimation.toValue = @(1.f);              // 1 round
-    tailAnimation.timingFunction = _timingFunction;
+    tailAnimation.timingFunction = self.timingFunction;
     
     CABasicAnimation *endHeadAnimation = [CABasicAnimation animationWithKeyPath:@"strokeStart"];
-    endHeadAnimation.beginTime = _duration / 1.5f;  // start from last animation fade
-    endHeadAnimation.duration = _duration / 3.0f;
+    endHeadAnimation.beginTime = self.duration / 1.5f;  // start from last animation fade
+    endHeadAnimation.duration = self.duration / 3.0f;
     endHeadAnimation.fromValue = @(0.25f);
     endHeadAnimation.toValue = @(1.f);
-    endHeadAnimation.timingFunction = _timingFunction;
+    endHeadAnimation.timingFunction = self.timingFunction;
     
     CABasicAnimation *endTailAnimation = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
-    endTailAnimation.beginTime = _duration / 1.5f;
-    endTailAnimation.duration = _duration / 3.0f;
+    endTailAnimation.beginTime = self.duration / 1.5f;
+    endTailAnimation.duration = self.duration / 3.0f;
     endTailAnimation.fromValue = @(1.f);
     endTailAnimation.toValue = @(1.f);
-    endTailAnimation.timingFunction = _timingFunction;
+    endTailAnimation.timingFunction = self.timingFunction;
     
     CAAnimationGroup *animations = [CAAnimationGroup animation];
-    animations.duration = _duration;
+    animations.duration = self.duration;
     animations.animations = @[headAnimation, tailAnimation, endHeadAnimation, endTailAnimation];
     animations.repeatCount = INFINITY;
     animations.removedOnCompletion = NO;
-    [_progressLayer addAnimation:animations forKey:loadingAnimationStrokeKey];
+    [self.progressLayer addAnimation:animations forKey:loadingAnimationStrokeKey];
     
-    _isAnimating = YES;
+    self.isAnimating = YES;
     
-    if (_hidesWhenStopped) {
+    if (self.hidesWhenStopped) {
         self.hidden = NO;
     }
     
-    if (!_bgArcImageView) {
+    if (!self.bgArcImageView) {
         [self addArcBackground];
     }
 }
 
 - (void)stopLoadingAnimation
 {
-    if (!_isAnimating) {
+    if (!self.isAnimating) {
         return;
     }
     
-    [_progressLayer removeAllAnimations];
-    _isAnimating = NO;
+    [self.progressLayer removeAllAnimations];
+    self.isAnimating = NO;
     
-    if (_hidesWhenStopped) {
+    if (self.hidesWhenStopped) {
         self.hidden = YES;
     }
     
-    [_bgArcImageView removeFromSuperview];
-    _bgArcImageView = nil;
+    [self.bgArcImageView removeFromSuperview];
+    self.bgArcImageView = nil;
 }
 
 - (void)resetAnimations
 {
-    if (_isAnimating) {
+    if (self.isAnimating) {
         [self stopLoadingAnimation];
         [self startLoadingAnimation];
     }
@@ -190,9 +190,9 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
                                                     startAngle:startAngle
                                                       endAngle:endAngle
                                                      clockwise:YES];
-    _progressLayer.path = path.CGPath;
-    _progressLayer.strokeStart = 0.f;
-    _progressLayer.strokeEnd = 0.f;
+    self.progressLayer.path = path.CGPath;
+    self.progressLayer.strokeStart = 0.f;
+    self.progressLayer.strokeEnd = 0.f;
 }
 
 #pragma mark - getters & setters
@@ -212,12 +212,12 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
 
 - (CGFloat)lineWidth
 {
-    return _progressLayer.lineWidth;
+    return self.progressLayer.lineWidth;
 }
 
 - (void)setLineWidth:(CGFloat)lineWidth
 {
-    _progressLayer.lineWidth = lineWidth;
+    self.progressLayer.lineWidth = lineWidth;
     [self updataPath];
 }
 
