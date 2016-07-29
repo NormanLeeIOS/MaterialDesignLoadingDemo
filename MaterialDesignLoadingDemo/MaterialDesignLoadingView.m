@@ -8,7 +8,9 @@
 
 #import "MaterialDesignLoadingView.h"
 
-#define ROUND_COLOR [[UIColor grayColor] colorWithAlphaComponent:0.2]
+#define ROUND_COLOR [UIColor colorWithRed:0xd2/255.0f green:0xd2/255.0f blue:0xd2/255.0f alpha: .2f]
+#define ARC_COLOR [UIColor colorWithRed:0xd2/255.0f green:0xd2/255.0f blue:0xd2/255.0f alpha:1.0f]
+#define ARC_COLOR_GRAY [UIColor colorWithRed:0x8e/255.0f green:0x8e/255.0f blue:0x8e/255.0f alpha:1.0f]
 
 static NSString *loadingAnimationRotationKey = @"loading.rotation";
 static NSString *loadingAnimationStrokeKey = @"loading.stroke";
@@ -17,59 +19,42 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
 
 @property (nonatomic, assign, readwrite) BOOL isAnimating;
 
+@property (nonatomic, assign) AnimationType animationType;
+
 @property (nonatomic, strong) CAShapeLayer *progressLayer;
 
 @property (nonatomic, strong) UIImageView *bgArcImageView;
+
+@property (nonatomic, strong) UIImageView *numberImageView;
 
 @end
 
 @implementation MaterialDesignLoadingView
 
-- (instancetype)initWithFrame:(CGRect)frame
+
+- (instancetype)initWithFrame:(CGRect)frame Type:(AnimationType)animationType
 {
     self = [super initWithFrame:frame];
     if (self) {
+        _animationType = animationType;
         [self initialize];
     }
     return self;
 }
 
-
-- (instancetype)initWithCoder:(NSCoder *)coder
+- (instancetype)initWithFrame:(CGRect)frame
 {
-    self = [super initWithCoder:coder];
-    if (self) {
-        [self initialize];
-    }
-    return self;
+    return [self initWithFrame:frame Type:AnimationTypeCommon];
 }
 
 - (void)initialize
 {
+    self.backgroundColor = [UIColor clearColor];
     self.duration = 1.05f;
     self.timingFunction = [[CAMediaTimingFunction alloc] initWithControlPoints:0.4f :0.0f :0.2f :1.0f];
     [self.layer addSublayer:self.progressLayer];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resetAnimations) name:UIApplicationDidBecomeActiveNotification object:nil];
-}
-
-- (void)addArcBackground
-{
-    // ArcBackground
-    UIGraphicsBeginImageContextWithOptions(self.bounds.size, NO, [UIScreen mainScreen].scale);
-    CGContextRef ctx = UIGraphicsGetCurrentContext();
-    CGContextSetStrokeColorWithColor(ctx, ROUND_COLOR.CGColor);
-    CGContextSetLineWidth(ctx, self.lineWidth);
-    CGContextAddArc(ctx, self.bounds.size.width/2, self.bounds.size.height/2, MIN(self.bounds.size.width/2, self.bounds.size.height/2) - self.lineWidth/2, 0, 2*M_PI, 1); // r = 50
-    CGContextDrawPath(ctx, kCGPathStroke);
-    UIImage *curve = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    self.bgArcImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height)];
-    self.bgArcImageView.image = curve;
-    self.bgArcImageView.backgroundColor = [UIColor clearColor];
-    
-    [self addSubview:self.bgArcImageView];
 }
 
 - (void)layoutSubviews
@@ -177,9 +162,39 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
         self.hidden = NO;
     }
     
-    if (!self.bgArcImageView) {
-        [self addArcBackground];
+    if (self.animationType == AnimationTypeCommon) {
+        [self addSubview:self.bgArcImageView];
+        [self addSubview:self.numberImageView];
+        self.lineWidth = 2.0f;
+    } else {
+        self.lineWidth = 1.0f;
     }
+    
+    switch (self.animationType) {
+        case AnimationTypeCommon:
+        {
+            [self addSubview:self.bgArcImageView];
+            [self addSubview:self.numberImageView];
+            self.tintColor = ARC_COLOR;
+            break;
+        }
+        case AnimationTypeWhite:
+        {
+            self.lineWidth = 2.0f;
+            self.backgroundColor = [UIColor redColor];
+            self.tintColor = [UIColor whiteColor];
+            break;
+        }
+        case AnimationTypeGray:
+        {
+            self.lineWidth = 1.0f;
+            self.tintColor = ARC_COLOR_GRAY;
+            break;
+        }
+        default:
+            break;
+    }
+
 }
 
 - (void)stopLoadingAnimation
@@ -196,7 +211,8 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
     }
     
     [self.bgArcImageView removeFromSuperview];
-    self.bgArcImageView = nil;
+    [self.numberImageView removeFromSuperview];
+    self.backgroundColor = [UIColor clearColor];
 }
 
 - (void)resetAnimations
@@ -255,6 +271,35 @@ static NSString *loadingAnimationStrokeKey = @"loading.stroke";
 {
     _hidesWhenStopped = hidesWhenStopped;
     self.hidden = !self.isAnimating && hidesWhenStopped;
+}
+
+- (UIImageView *)bgArcImageView
+{
+    if (!_bgArcImageView) {
+        // ArcBackground
+        UIGraphicsBeginImageContextWithOptions(self.bounds.size, NO, [UIScreen mainScreen].scale);
+        CGContextRef ctx = UIGraphicsGetCurrentContext();
+        CGContextSetStrokeColorWithColor(ctx, ROUND_COLOR.CGColor);
+        CGContextSetLineWidth(ctx, self.lineWidth);
+        CGContextAddArc(ctx, self.bounds.size.width/2, self.bounds.size.height/2, MIN(self.bounds.size.width/2, self.bounds.size.height/2) - self.lineWidth/2, 0, 2*M_PI, 1); // r = 50
+        CGContextDrawPath(ctx, kCGPathStroke);
+        UIImage *curve = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+        
+        _bgArcImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height)];
+        _bgArcImageView.image = curve;
+        _bgArcImageView.backgroundColor = [UIColor clearColor];
+    }
+    return _bgArcImageView;
+}
+
+- (UIImageView *)numberImageView
+{
+    if (!_numberImageView) {
+        _numberImageView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"hyg_loading_1"]];
+        _numberImageView.frame = CGRectMake(self.bounds.size.width/2 - 2.5f, self.bounds.size.height/2 - 6.0f, 5.0f, 12.0f);
+    }
+    return _numberImageView;
 }
 
 @end
